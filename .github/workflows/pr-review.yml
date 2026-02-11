@@ -52,7 +52,7 @@ jobs:
         response=$(curl -s -X POST \
           -H "Content-Type: application/json" \
           -d "$payload" \
-          https://ai-mastra-agent-workshop-phi-teal.vercel.app/api/workflows/prWorkflow/start-async?runId=$runId")
+          "https://ai-mastra-agent-workshop-phi-teal.vercel.app/api/workflows/prWorkflow/start-async?runId=$runId")
         
         echo "Start workflow response: $response"
         
