@@ -11,28 +11,51 @@ const PRODUCTS = {
     emoji: "🍢",
     type: "freebie",
   },
+  // Automatically added: 1 orange per 4 apples
+  orange: {
+    name: "Orange - FREE",
+    emoji: "🍊",
+    type: "freebie",
+  },
 };
 
-const FREEBIE_ID = "skewers";
 const FRUIT_IDS = Object.keys(PRODUCTS).filter(
   (id) => PRODUCTS[id].type === "fruit"
 );
 
-// Ensure the number of free skewer packs matches the number of fruits in basket
+// Define auto-freebie rules
+// - skewers: 1 pack per 3 total fruits
+// - orange: 1 per 4 apples
+const FREEBIE_RULES = [
+  {
+    id: "skewers",
+    rewardPer: 3,
+    countTrigger: (ids) => ids.filter((id) => FRUIT_IDS.includes(id)).length,
+  },
+  {
+    id: "orange",
+    rewardPer: 4,
+    countTrigger: (ids) => ids.filter((id) => id === "apple").length,
+  },
+];
+
+const FREEBIE_IDS = new Set(
+  FREEBIE_RULES.map((r) => r.id).filter((id) => !!id)
+);
+
+// Ensure the number of all freebies matches rules
 function normalizeBasketFreebies(rawBasket) {
-  const basket = Array.isArray(rawBasket) ? rawBasket.slice() : [];
-  // Count fruit items only
-  const fruitCount = basket.filter((id) => FRUIT_IDS.includes(id)).length;
-  const desiredPacks = Math.floor(fruitCount / 3);
-  const currentPacks = basket.filter((id) => id === FREEBIE_ID).length;
+  const base = Array.isArray(rawBasket) ? rawBasket.slice() : [];
+  // Remove any existing freebies first
+  const nonFree = base.filter((id) => !FREEBIE_IDS.has(id));
+  let result = nonFree.slice();
 
-  if (currentPacks === desiredPacks) return basket; // already in sync
-
-  // Remove all existing freebie entries
-  const cleaned = basket.filter((id) => id !== FREEBIE_ID);
-  // Add the correct number of freebie packs
-  for (let i = 0; i < desiredPacks; i++) cleaned.push(FREEBIE_ID);
-  return cleaned;
+  for (const rule of FREEBIE_RULES) {
+    const triggerCount = rule.countTrigger(nonFree);
+    const desired = Math.floor(triggerCount / rule.rewardPer);
+    for (let i = 0; i < desired; i++) result.push(rule.id);
+  }
+  return result;
 }
 
 function getBasket() {
@@ -53,7 +76,7 @@ function getBasket() {
 function addToBasket(product) {
   const basket = getBasket();
   // Prevent manually adding freebies; they are managed automatically
-  if (product !== FREEBIE_ID) {
+  if (!(PRODUCTS[product] && PRODUCTS[product].type === "freebie")) {
     basket.push(product);
   }
   const normalized = normalizeBasketFreebies(basket);
