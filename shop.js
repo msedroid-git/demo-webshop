@@ -1,15 +1,49 @@
+// Product catalog
+// type: 'fruit' are regular purchasable items
+// type: 'freebie' are automatically managed bonus items (not sold separately)
 const PRODUCTS = {
-  apple: { name: "Apple", emoji: "🍏" },
-  banana: { name: "Banana", emoji: "🍌" },
-  lemon: { name: "Lemon", emoji: "🍋" },
+  apple: { name: "Apple", emoji: "🍏", type: "fruit" },
+  banana: { name: "Banana", emoji: "🍌", type: "fruit" },
+  lemon: { name: "Lemon", emoji: "🍋", type: "fruit" },
+  // Automatically added: 1 x pack per 3 fruits (each pack contains 5 skewers)
+  skewers: {
+    name: "Wooden Skewers (5 pack) - FREE",
+    emoji: "🍢",
+    type: "freebie",
+  },
 };
+
+const FREEBIE_ID = "skewers";
+const FRUIT_IDS = Object.keys(PRODUCTS).filter(
+  (id) => PRODUCTS[id].type === "fruit"
+);
+
+// Ensure the number of free skewer packs matches the number of fruits in basket
+function normalizeBasketFreebies(rawBasket) {
+  const basket = Array.isArray(rawBasket) ? rawBasket.slice() : [];
+  // Count fruit items only
+  const fruitCount = basket.filter((id) => FRUIT_IDS.includes(id)).length;
+  const desiredPacks = Math.floor(fruitCount / 3);
+  const currentPacks = basket.filter((id) => id === FREEBIE_ID).length;
+
+  if (currentPacks === desiredPacks) return basket; // already in sync
+
+  // Remove all existing freebie entries
+  const cleaned = basket.filter((id) => id !== FREEBIE_ID);
+  // Add the correct number of freebie packs
+  for (let i = 0; i < desiredPacks; i++) cleaned.push(FREEBIE_ID);
+  return cleaned;
+}
 
 function getBasket() {
   try {
     const basket = localStorage.getItem("basket");
     if (!basket) return [];
     const parsed = JSON.parse(basket);
-    return Array.isArray(parsed) ? parsed : [];
+    const normalized = normalizeBasketFreebies(parsed);
+    // Persist normalization so other views remain consistent
+    localStorage.setItem("basket", JSON.stringify(normalized));
+    return Array.isArray(normalized) ? normalized : [];
   } catch (error) {
     console.warn("Error parsing basket from localStorage:", error);
     return [];
@@ -18,8 +52,12 @@ function getBasket() {
 
 function addToBasket(product) {
   const basket = getBasket();
-  basket.push(product);
-  localStorage.setItem("basket", JSON.stringify(basket));
+  // Prevent manually adding freebies; they are managed automatically
+  if (product !== FREEBIE_ID) {
+    basket.push(product);
+  }
+  const normalized = normalizeBasketFreebies(basket);
+  localStorage.setItem("basket", JSON.stringify(normalized));
 }
 
 function clearBasket() {
